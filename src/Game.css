@@ -1,0 +1,15 @@
+#selection {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+#gameSettings {
+    margin-top:20px;
+    width: fit-content;
+    justify-self: center;
+}
+
+#startBtn {
+    margin-top: 10px;
+}
