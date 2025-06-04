@@ -107,10 +107,10 @@ function RegenerateQuestion() {
             }
             let value = getRandomInt(0,r*2);
             let j = 0;
-            while(value === r && newBtns.includes(value)) { // avoid duplicate
+            while(value === r && newBtns.includes(value.toString())) { // avoid duplicate
                 value = getRandomInt(0,r*2);
                 j++;
-                if(j > 10) break;
+                if(j > 10) break; // softlock prevention
             }
             newBtns[i] = value.toString();
         }
