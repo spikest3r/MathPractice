@@ -17,9 +17,11 @@ export function StateProvider({ children }) {
     const [buttons, setButtons] = useState(["0","0","0"])
     const [statusText, setStatusText] = useState("");
     const [hardness, setHardness] = useState(2);
+    const [useTextField, setUseTextField] = useState(false);
     return (
         <StateContext.Provider value={{
-            isGameRunning, setIsGameRunning, settings, setSettings, gameValues, setGameValues, buttons, setButtons, question, setQuestion, statusText, setStatusText, hardness, setHardness
+            isGameRunning, setIsGameRunning, settings, setSettings, gameValues, setGameValues, buttons, setButtons, question, setQuestion, statusText, setStatusText, hardness, setHardness,
+            useTextField, setUseTextField
         }}>
             {children}
         </StateContext.Provider>

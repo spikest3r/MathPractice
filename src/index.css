@@ -22,12 +22,11 @@ a:hover {
   color: #535bf2;
 }
 
-body {
+body, html {
   margin: 0;
-  display: flex;
-  place-items: center;
+  padding: 0;
   min-width: 320px;
-  min-height: 100vh;
+  min-height: 100vh; /* full viewport height */
 }
 
 h1 {
@@ -50,6 +49,11 @@ button:hover {
   border-color: #646cff;
 }
 
+#root {
+  place-items: center;
+  min-height: 400px;
+}
+
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;
@@ -60,5 +64,80 @@ button:hover {
   }
   button {
     background-color: #f9f9f9;
+  }
+}
+
+.logo {
+  will-change: filter;
+  transition: filter 300ms;
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .logo {
+    animation: logo-spin infinite 15s linear;
+  }
+}
+
+header, footer {
+  background-color: white;
+  display: flex; 
+  align-items: center;
+  background-color: white;
+}
+
+header > div {
+  gap:10px;
+  align-items: center;
+}
+
+header > h1 {
+  color:black;
+  font-size: 2em;
+  margin-left: 20px;
+}
+
+#reactText {
+  color:black;
+  margin-left:30px;
+}
+
+footer > a {
+  margin:20px;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+.layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+main {
+  flex: 1;
+  display: flex; justify-content: center; align-items: center; height: 100vh;
+}
+
+@media (max-width: 480px) {
+  header {
+    flex-direction: column;
+  }
+  header > h1 {
+    margin-left: 0px;
+  }
+  #reactText {
+    margin-left:0px;
   }
 }

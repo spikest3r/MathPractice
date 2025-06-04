@@ -25,30 +25,45 @@ let trigTable = { // functions can be reversed therefore storing that way is mor
     }
 }
 
-function RegenerateQuestion(gameSettings, setButtons, setQuestion, hardness) {
-    const settingsArray = Object.values(gameSettings)
+var isGameRunning, setIsGameRunning, settings, setSettings, gameValues, setGameValues, buttons, setButtons, question, setQuestion, statusText, setStatusText, 
+        hardness, setHardness, useTextField, setUseTextField, fieldText, setFieldText;
+
+var trigQuesion, setTrigQuestion;
+
+let result = 0;
+
+function RegenerateQuestion() {
+    setFieldText(""); // clear field
+    setTrigQuestion(false);
+    const settingsArray = Object.values(settings)
     let index = getRandomInt(0,2);
     while(!settingsArray[index]) {
         index = getRandomInt(0,2);
     }
-    let result = 0;
     switch(index) {
         case 0: {
             // make problem
-            const rangeMin = -20 + (hardness > 3 ? hardness * 100 : hardness * 20);
-            const rangeMax = 20 + (hardness > 3 ? hardness * 100 : hardness * 20);
-            const a = getRandomInt(rangeMin,rangeMax);
-            let b = getRandomInt(rangeMin,rangeMax);
-            let i = getRandomInt(0,hardness >= 3 ? 2 : 1); // multiply only on level 3+
-            const op = ["+","-","*"][i];
-            if(b < 0) {
-                b = "(" + b.toString() + ")"
+            const rangeMin = -20 + (hardness > 3 ? hardness * 120 : hardness * 50);
+            const rangeMax = 20 + (hardness > 3 ? hardness * 120 : hardness * 50);
+            let good = false;
+            let eq = "";
+            while(!good) {
+                let a = getRandomInt(rangeMin,rangeMax);
+                let b = getRandomInt(rangeMin,rangeMax);
+                let i = getRandomInt(0,hardness >= 3 ? 2 : 1); // multiply only on level 3+
+                const op = ["+","-","*"][i];
+                if(b < 0) {
+                    b = "(" + b.toString() + ")"
+                }
+                eq = a.toString() + op + b.toString();
+                const parser = new Parser()
+                result = parser.parse(eq).evaluate();
+                if(result != 0) {
+                    good = true;
+                }
             }
-            const eq = a.toString() + op + b.toString();
             // solve and render
             setQuestion(eq);
-            const parser = new Parser()
-            result = parser.parse(eq).evaluate();
         }
         break;
         case 1: {
@@ -67,39 +82,53 @@ function RegenerateQuestion(gameSettings, setButtons, setQuestion, hardness) {
             let values = Object.values(arr);
             if(opI === 1 || opI === 3) {
                 // flip because trig funcs are reverse
-                keys.reverse();
-                values.reverse();
+                values = values.reverse();
             }
-            const valI = getRandomInt(0,3);
+            const valI = getRandomInt(0,2);
             result = values[valI];
             const eq = op + "(" + keys[valI] + "°)"
             setQuestion(eq);
+            setTrigQuestion(true);
         }
         break;
     }
-    // select button
-    const btnIndex = getRandomInt(0,2);
-    let newBtns = ["0","0","0"];
-    for(let i = 0; i < 3; i++) {
-        if(i === btnIndex) {
-            newBtns[i] = result.toString();
-            continue;
+    if(!useTextField) {
+        // select button
+        const btnIndex = getRandomInt(0,2);
+        let newBtns = ["0","0","0"];
+        for(let i = 0; i < 3; i++) {
+            if(i === btnIndex) {
+                newBtns[i] = result.toString();
+                continue;
+            }
+            let r = result;
+            if(r < 10 && r > -10) {
+                r *= 3; // increase pool
+            }
+            let value = getRandomInt(0,r*2);
+            let j = 0;
+            while(value === r && newBtns.includes(value)) { // avoid duplicate
+                value = getRandomInt(0,r*2);
+                j++;
+                if(j > 10) break;
+            }
+            newBtns[i] = value.toString();
         }
-        let value = getRandomInt(0,result*2);
-        let j = 0;
-        while(value === result) {
-            value = getRandomInt(0,result*2);
-            j++;
-            if(j > 10) break;
-        }
-        newBtns[i] = value.toString();
+        setButtons(newBtns);
+        correctButton = btnIndex; 
     }
-    setButtons(newBtns);
-    correctButton = btnIndex; 
 }
 
-function HandleGameButton(btn, gameValues, setGameValues, settings, setButtons, setQuestion, setIsGameRunning, setStatusText, hardness) {
-    if(btn === correctButton) {
+function ParseAnswer() {
+    if(trigQuesion) {
+        return fieldText; // return raw string if trig because answer contains special symbols
+    }
+    return Number(fieldText);
+}
+
+function HandleGameButton(btn) {
+    const correct = useTextField ? ParseAnswer() === result : btn === correctButton;
+    if(correct) {
         setGameValues(prev => {
             const newScore = prev.score+1;
             let tries = prev.tries;
@@ -134,12 +163,22 @@ function HandleGameButton(btn, gameValues, setGameValues, settings, setButtons, 
             };
         });
     }
-    RegenerateQuestion(settings, setButtons, setQuestion, hardness);
+    RegenerateQuestion();
+}
+
+function TextFieldSubmit(e) {
+    const condition = e.key === "Enter" || e.type === "click";
+    if(condition && isGameRunning && useTextField) {
+        if(!fieldText || (Number.isNaN(Number(fieldText)) && !trigQuesion)) {
+            alert("Field cannot be empty or contain symbols other than digits!");
+            return;
+        }
+        HandleGameButton(-1); // any value because we use text field instead
+    }
 }
 
 // Components
 function StartButton() {
-    const {isGameRunning, setIsGameRunning, settings, _, gameValues, __, ___, setButtons, ____, setQuestion, _____, setStatusText, hardness, ______} = useStateContext();
     function gameStart() {
         const state = !isGameRunning; // here we save state of condition separately to compensate react setState delay
         setIsGameRunning(state);
@@ -150,7 +189,11 @@ function StartButton() {
                 return;
             }
             setStatusText(""); // clear
-            RegenerateQuestion(settings, setButtons, setQuestion, hardness); // generate starting question
+            setGameValues({
+                score: 0,
+                tries: 3
+            });
+            RegenerateQuestion(); // generate starting question
         } else {
             const lastScore = gameValues["score"];
             if(lastScore > hiScore) {
@@ -170,10 +213,19 @@ function StartButton() {
 }
 
 function Game() {
-    const {isGameRunning, setIsGameRunning, settings, setSettings, gameValues, setGameValues, buttons, setButtons, question, setQuestion, statusText, setStatusText, hardness, setHardness} = useStateContext();
+    ({isGameRunning, setIsGameRunning, settings, setSettings, gameValues, setGameValues, buttons, setButtons, question, setQuestion, statusText, setStatusText, 
+        hardness, setHardness, useTextField, setUseTextField} = useStateContext());
     const cookie = new Cookies();
     const [trig, setTrig] = useState(false);
     const [sqrt, setSqrt] = useState(true);
+    const [textFieldFlag, setTextFieldFlag] = useState(false);
+    const [adaptiveDifficulty, setAdaptiveDifficulty] = useState(false);
+    const [f, sf] = useState("");
+    const [tq,stq] = useState(false);
+    fieldText = f;
+    setFieldText = sf;
+    trigQuesion = tq;
+    setTrigQuestion = stq;
     useEffect(() => {
         let hiScore = cookie.get('hiScore');
         let hiScoreText = "";
@@ -188,9 +240,6 @@ function Game() {
         setStatusText(hiScoreText);
     }, []);
     useEffect(() => {
-        if(isGameRunning) {
-            setStatusText("Hardness: " + hardness.toString());
-        }
         // trig unlock
         setTrig(!(hardness >= 4)); // trig on level 3+
         setSqrt(!(hardness >= 2)); // sqrt on level 2+
@@ -201,28 +250,71 @@ function Game() {
                 trig: prev.trig && hardness < 4 ? false : prev.trig,
             };
         });
-    },[hardness, isGameRunning])
+        setUseTextField(hardness >= 4); // field on level 4+
+        setTextFieldFlag(hardness == 5);
+    },[hardness, isGameRunning]);
+    useEffect(() => {
+        if(hardness < 4) return;
+        if(!useTextField && hardness >= 4) {
+            setTrig(true);
+            setSettings(prev => ({...prev, trig:false}));
+        } else {
+            setTrig(false);
+        }
+    },[useTextField,hardness])
+    useEffect(() => {
+        setFieldText(fieldText.replace(/\s+/g, ''));
+    },[fieldText]);
+    useEffect(() => {
+        if(gameValues.score % 15 == 0 && adaptiveDifficulty) {
+            let hard = hardness;
+            if(hard === 5) return;
+            if(hard < 4) {
+                hard++;
+                setHardness(hard);
+            } else if(hard >= 4 && useTextField) {
+                hard++;
+                setHardness(hard);
+            }
+            if(hard >= 2 && !settings.roots) {
+                setSettings(prev => ({...prev, roots: true}));
+            }
+            if(hard >= 4 && !settings.trig) {
+                setSettings(prev => ({...prev, trig: true}));
+            }
+        }
+    },[gameValues.score]);
     const updateSetting = (key) => setSettings(prev => ({...prev, [key]: !prev[key]}));
     return <>
     <h2 id="status">{statusText}</h2>
     {!isGameRunning && <h2>Select parameters and press "Start"</h2>}
     {isGameRunning && <div>
-        <h2>{question}</h2>
-        <p>Score: {gameValues.score}</p>
-        <p>Tried left: {gameValues.tries}</p>
+        <h2 id="score">Score: {gameValues.score}</h2>
+        <h2 id="question">{question}</h2>
+        {!useTextField ? <div id="selection">
+        <button onClick={() => HandleGameButton(0)}>{buttons[0]}</button>
+        <button onClick={() => HandleGameButton(1)}>{buttons[1]}</button>
+        <button onClick={() => HandleGameButton(2)}>{buttons[2]}</button>
+        </div> : <div>
+            <div id="selection">
+            <input id="field" type="text" value={fieldText} onChange={(e) => setFieldText(e.target.value)} onKeyDown={TextFieldSubmit} />
+            {trigQuesion && <button onClick={() => {setFieldText(fieldText + "√")}}>√</button>}
+            </div>
+            <br/>
+            <button onClick={TextFieldSubmit}>Submit</button>
+            </div>}
+        <p>Tries left: {gameValues.tries}</p>
+        <p>Hardness: {hardness}</p>
         </div>}
-    {isGameRunning && <div id="selection">
-        <button onClick={() => HandleGameButton(0, gameValues, setGameValues, settings, setButtons, setQuestion, setIsGameRunning, setStatusText, hardness)}>{buttons[0]}</button>
-        <button onClick={() => HandleGameButton(1, gameValues, setGameValues, settings, setButtons, setQuestion, setIsGameRunning, setStatusText, hardness)}>{buttons[1]}</button>
-        <button onClick={() => HandleGameButton(2, gameValues, setGameValues, settings, setButtons, setQuestion, setIsGameRunning, setStatusText, hardness)}>{buttons[2]}</button>
-    </div> }
     <StartButton />
     {!isGameRunning && <fieldset id="gameSettings">
         <legend>Settings</legend>
         <label><input type="checkbox" checked={settings.arith} onChange={() => updateSetting("arith")}/> Arithmetics</label> <br/>
         <label><input disabled={sqrt} type="checkbox" checked={settings.roots} onChange={() => updateSetting("roots")}/> Square roots {hardness < 2 && "(Level 2+)"}</label> <br/>
-        <label><input disabled={true} type="checkbox" checked={settings.trig} onChange={() => updateSetting("trig")}/> Trigonometry {hardness < 4 && "(Level 4+)"}</label> <br/>
-        <label>Hardness <input type="range" value={hardness} onChange={e => setHardness(Number(e.target.value))} min={1} max={5} step={1}/> {hardness}</label>
+        <label><input disabled={trig} type="checkbox" checked={settings.trig} onChange={() => updateSetting("trig")}/> Trigonometry {hardness < 4 && "(Level 4+)"}</label> <br/>
+        <label>Hardness <input type="range" value={hardness} onChange={e => setHardness(Number(e.target.value))} min={1} max={5} step={1}/> {hardness}</label><br/>
+        {hardness >= 4 && <><label><input disabled={textFieldFlag} type="checkbox" checked={useTextField} onChange={(e) => setUseTextField(e.target.checked)}/> Use text field {hardness < 4 && "(Level 4+)"}</label><br/></>}
+        <label><input type="checkbox" checked={adaptiveDifficulty} onChange={(e) => setAdaptiveDifficulty(e.target.checked)}/> Adaptive difficulty </label> <br/>
     </fieldset>}
     </>
 }
