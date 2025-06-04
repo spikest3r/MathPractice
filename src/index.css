@@ -54,19 +54,6 @@ button:hover {
   min-height: 400px;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
-}
-
 .logo {
   will-change: filter;
   transition: filter 300ms;
@@ -88,10 +75,9 @@ button:hover {
 }
 
 header, footer {
-  background-color: white;
   display: flex; 
   align-items: center;
-  background-color: white;
+  background-color: black;
 }
 
 header > div {
@@ -100,13 +86,13 @@ header > div {
 }
 
 header > h1 {
-  color:black;
+  color:white;
   font-size: 2em;
   margin-left: 20px;
 }
 
 #reactText {
-  color:black;
+  color:white;
   margin-left:30px;
 }
 
@@ -139,5 +125,27 @@ main {
   }
   #reactText {
     margin-left:0px;
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #cecece;
+  }
+  a:hover {
+    color: #747bff;
+  }
+  button {
+    background-color: #f9f9f9;
+  }
+  header, footer {
+    background-color: white;
+  }
+  header > h1 {
+    color:black;
+  }
+  #reactText {
+    color: black;
   }
 }

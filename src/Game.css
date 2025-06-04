@@ -38,3 +38,9 @@ input[type="number"] {
 fieldset {
     border: 2px white solid;
 }
+
+@media (prefers-color-scheme: light) {
+    fieldset {
+        border: 2px black solid;
+    }
+}
