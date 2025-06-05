@@ -107,7 +107,7 @@ function RegenerateQuestion() {
             }
             let value = getRandomInt(0,r*2);
             let j = 0;
-            while(value === r && newBtns.includes(value.toString())) { // avoid duplicate
+            while(value === r || newBtns.includes(value.toString())) { // avoid duplicate
                 value = getRandomInt(0,r*2);
                 j++;
                 if(j > 10) break; // softlock prevention
@@ -252,7 +252,7 @@ function Game() {
         });
         setUseTextField(hardness >= 4); // field on level 4+
         setTextFieldFlag(hardness == 5);
-    },[hardness, isGameRunning]);
+    },[hardness]);
     useEffect(() => {
         if(hardness < 4) return;
         if(!useTextField && hardness >= 4) {
@@ -266,7 +266,7 @@ function Game() {
         setFieldText(fieldText.replace(/\s+/g, ''));
     },[fieldText]);
     useEffect(() => {
-        if(gameValues.score % 15 == 0 && adaptiveDifficulty) {
+        if(gameValues.score % 15 == 0 && gameValues.score > 0 && adaptiveDifficulty) {
             let hard = hardness;
             if(hard === 5) return;
             if(hard < 4) {
