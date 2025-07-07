@@ -2,7 +2,7 @@ import Cookies from 'universal-cookie'
 import './Game.css'
 import {useStateContext} from './StateContext.jsx'
 import { Parser } from 'expr-eval';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 function getRandomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -11,6 +11,7 @@ function getRandomInt(min, max) {
 //Game logic
 let correctButton = -1; // no button is correct
 let hiScore = 0;
+let hiTime = 0;
 
 let trigTable = { // functions can be reversed therefore storing that way is more efficient
     sincos: {
@@ -26,7 +27,7 @@ let trigTable = { // functions can be reversed therefore storing that way is mor
 }
 
 var isGameRunning, setIsGameRunning, settings, setSettings, gameValues, setGameValues, buttons, setButtons, question, setQuestion, statusText, setStatusText, 
-        hardness, setHardness, useTextField, setUseTextField, fieldText, setFieldText;
+        hardness, setHardness, useTextField, setUseTextField, fieldText, setFieldText, timeElapsed, setTimeElapsed, timeText, setTimeText;
 
 var trigQuesion, setTrigQuestion;
 
@@ -177,6 +178,23 @@ function TextFieldSubmit(e) {
     }
 }
 
+// Component that displays average time elapsed per question given
+function AvgTimePerQuestion() {
+    try {
+        let result = timeElapsed / gameValues.score;
+        console.log(result);
+        if(result <= 0 || Number.isNaN(result) || result === undefined || result == Infinity) {
+            throw Error("custom exception");
+        }
+        return <h3>Time per question: {result.toFixed(2)} seconds</h3>
+    } catch {
+        console.log("first time or division by zero");
+        return <></>
+    }
+}
+
+var timeString;
+
 // Components
 function StartButton() {
     function gameStart() {
@@ -194,6 +212,9 @@ function StartButton() {
                 tries: 3
             });
             RegenerateQuestion(); // generate starting question
+            setTimeElapsed(0); // reset timers
+            setTimeText("Time: 0"); // init init time text
+            useEffectTimeTextArmed = true;
         } else {
             const lastScore = gameValues["score"];
             if(lastScore > hiScore) {
@@ -201,7 +222,13 @@ function StartButton() {
                 const cookie = new Cookies();
                 cookie.set('hiScore',hiScore);
             }
-            setStatusText("Last score: " + lastScore.toString() + "\nHigh score: " + hiScore.toString());
+            if(timeElapsed < hiTime) {
+                hiTime = timeElapsed;
+                const cookie = new Cookies();
+                cookie.set('hiTime',hiTime);
+            }
+            setStatusText("Last score: " + lastScore.toString() + " | Best score: " + hiScore.toString());
+            timeString = "| Best time: " + hiTime.toString();
         }
     }
 
@@ -212,9 +239,11 @@ function StartButton() {
     )
 }
 
+let useEffectTimeTextArmed = false; // funny name
+
 function Game() {
     ({isGameRunning, setIsGameRunning, settings, setSettings, gameValues, setGameValues, buttons, setButtons, question, setQuestion, statusText, setStatusText, 
-        hardness, setHardness, useTextField, setUseTextField} = useStateContext());
+        hardness, setHardness, useTextField, setUseTextField, timeElapsed, setTimeElapsed} = useStateContext());
     const cookie = new Cookies();
     const [trig, setTrig] = useState(false);
     const [sqrt, setSqrt] = useState(true);
@@ -222,23 +251,53 @@ function Game() {
     const [adaptiveDifficulty, setAdaptiveDifficulty] = useState(false);
     const [f, sf] = useState("");
     const [tq,stq] = useState(false);
+    const [tt, stt] = useState("");
     fieldText = f;
     setFieldText = sf;
     trigQuesion = tq;
     setTrigQuestion = stq;
+    timeText = tt;
+    setTimeText = stt;
+
+    // high scores handler
     useEffect(() => {
-        let hiScore = cookie.get('hiScore');
+        hiScore = cookie.get('hiScore');
+        hiTime = cookie.get('hiTime');
         let hiScoreText = "";
+        let hiTimeText = "";
+
+        console.log(hiScore);
+        console.log(hiTime);
 
         if (hiScore == undefined) {
             hiScore = 0;
             cookie.set('hiScore', hiScore);
+            console.log("undefined score");
         } else {
-            if(hiScore > 0) hiScoreText = "High score: " + hiScore.toString();
+            if(hiScore > 0) hiScoreText = "Best score: " + hiScore.toString();
+        }
+
+        if(hiTime == undefined) {
+            hiTime = 0;
+            cookie.set('hiTime', hiTime);
+            console.log("undefined time");
+        } else {
+            if(hiTime > 0) hiTimeText = "Best time: " + hiTime.toString();
         }
 
         setStatusText(hiScoreText);
+        setTimeText(hiTimeText);
     }, []);
+
+    // update high score time once timer stopped
+    useEffect(() => {
+        if(isGameRunning) return;
+        if(!useEffectTimeTextArmed) return;
+        console.log("Updated timeText");
+        setTimeText("Last time: " + timeElapsed.toString() + " " + timeString);
+    },[timeElapsed, isGameRunning]);
+
+    // hardness management
     useEffect(() => {
         // trig unlock
         setTrig(!(hardness >= 4)); // trig on level 3+
@@ -253,6 +312,7 @@ function Game() {
         setUseTextField(hardness >= 4); // field on level 4+
         setTextFieldFlag(hardness == 5);
     },[hardness]);
+
     useEffect(() => {
         if(hardness < 4) return;
         if(!useTextField && hardness >= 4) {
@@ -262,9 +322,13 @@ function Game() {
             setTrig(false);
         }
     },[useTextField,hardness])
+
+    // text field management
     useEffect(() => {
         setFieldText(fieldText.replace(/\s+/g, ''));
     },[fieldText]);
+
+    // hardness progression
     useEffect(() => {
         if(gameValues.score % 15 == 0 && gameValues.score > 0 && adaptiveDifficulty) {
             let hard = hardness;
@@ -284,9 +348,30 @@ function Game() {
             }
         }
     },[gameValues.score]);
+
+    // timer
+    const timerRef = useRef(null);
+    useEffect(() => {
+        if (isGameRunning) {
+            timerRef.current = setInterval(() => {
+                setTimeElapsed(prev => {
+                    setTimeText("Time: " + (prev + 1).toString());
+                    return prev + 1;
+                });
+            }, 1000);
+        } else {
+            clearInterval(timerRef.current);
+        }
+
+        // Clean up on unmount or when isGameRunning changes
+        return () => clearInterval(timerRef.current);
+    }, [isGameRunning]);
+
     const updateSetting = (key) => setSettings(prev => ({...prev, [key]: !prev[key]}));
     return <>
-    <h2 id="status">{statusText}</h2>
+    <h3>{timeText}</h3>
+    <h3 id="status">{statusText}</h3>
+    {!isGameRunning && <AvgTimePerQuestion />}
     {!isGameRunning && <h2>Select parameters and press "Start"</h2>}
     {isGameRunning && <div>
         <h2 id="score">Score: {gameValues.score}</h2>
