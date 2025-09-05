@@ -11,8 +11,12 @@
   },
   "dependencies": {
     "expr-eval": "^2.0.2",
+    "i18next": "^25.5.2",
+    "i18next-browser-languagedetector": "^8.2.0",
+    "i18next-http-backend": "^3.0.2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-i18next": "^15.7.3",
     "universal-cookie": "^8.0.1"
   },
   "devDependencies": {

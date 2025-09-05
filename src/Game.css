@@ -39,6 +39,19 @@ fieldset {
     border: 2px white solid;
 }
 
+#status {
+    white-space: pre-line;
+}
+
+.langSelector {
+    display: flex;
+    justify-content: center;
+}
+.langSelector > button {
+    margin-left: 16px;
+    margin-right: 16px;
+}
+
 @media (prefers-color-scheme: light) {
     fieldset {
         border: 2px black solid;

@@ -3,6 +3,7 @@ import './Game.css'
 import {useStateContext} from './StateContext.jsx'
 import { Parser } from 'expr-eval';
 import { useEffect, useState, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 
 function getRandomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -11,7 +12,6 @@ function getRandomInt(min, max) {
 //Game logic
 let correctButton = -1; // no button is correct
 let hiScore = 0;
-let hiTime = 0;
 
 let trigTable = { // functions can be reversed therefore storing that way is more efficient
     sincos: {
@@ -152,10 +152,9 @@ function HandleGameButton(btn) {
                     const cookie = new Cookies();
                     cookie.set('hiScore',hiScore);
                 }
-                setStatusText("Game over! Last score: " + lastScore.toString() + "\nHigh score: " + hiScore.toString());
                 return {
-                    tries: 3,
-                    score: 0
+                    tries: gameValues.tries,
+                    score: gameValues.score
                 };
             }
             return {
@@ -179,30 +178,49 @@ function TextFieldSubmit(e) {
 }
 
 // Component that displays average time elapsed per question given
-function AvgTimePerQuestion() {
-    try {
-        let result = timeElapsed / gameValues.score;
-        console.log(result);
-        if(result <= 0 || Number.isNaN(result) || result === undefined || result == Infinity) {
-            throw Error("custom exception");
-        }
-        return <h3>Time per question: {result.toFixed(2)} seconds</h3>
-    } catch {
+function AvgTimePerQuestion(score) {
+    const { t } = useTranslation();
+
+    const time = timeElapsed;
+    const s = score.score;
+
+    console.log(s);
+
+    if(!s) console.log("!score");
+    if(!time) console.log("!time");
+    if(time <= 0) console.log("time <= 0");
+    if(s <= 0) console.log("score <= 0");
+
+    if (!s || !time || s <= 0) {
         console.log("first time or division by zero");
-        return <></>
+        return null;
     }
+
+    const result = time / s;
+    console.log(time);
+    console.log(s);
+    console.log(result);
+
+    if (!isFinite(result)) {
+        console.log("invalid calculation");
+        return null;
+    }
+
+    return <h3>{t('time_per_question')} {result.toFixed(2)} {t('seconds')}</h3>;
 }
+
 
 var timeString;
 
 // Components
 function StartButton() {
+    const { t, i18n } = useTranslation();
     function gameStart() {
         const state = !isGameRunning; // here we save state of condition separately to compensate react setState delay
         setIsGameRunning(state);
         if(state) {
             if(Object.values(settings).every(value => !value)) {
-                alert("You have to select at least one parameter!");
+                alert(t('no_param_error'));
                 setIsGameRunning(false);
                 return;
             }
@@ -213,7 +231,6 @@ function StartButton() {
             });
             RegenerateQuestion(); // generate starting question
             setTimeElapsed(0); // reset timers
-            setTimeText("Time: 0"); // init init time text
             useEffectTimeTextArmed = true;
         } else {
             const lastScore = gameValues["score"];
@@ -222,26 +239,21 @@ function StartButton() {
                 const cookie = new Cookies();
                 cookie.set('hiScore',hiScore);
             }
-            if(timeElapsed < hiTime) {
-                hiTime = timeElapsed;
-                const cookie = new Cookies();
-                cookie.set('hiTime',hiTime);
-            }
-            setStatusText("Last score: " + lastScore.toString() + " | Best score: " + hiScore.toString());
-            timeString = "| Best time: " + hiTime.toString();
+            setStatusText(t('lastscore') + ": " + lastScore.toString() + " | "+t('bestscore')+": " + hiScore.toString());
         }
     }
 
     return (
         <>
-        <button id="startBtn" onClick={gameStart}>{!isGameRunning ? "Start" : "Stop"}</button>
+        <button id="startBtn" onClick={gameStart}>{!isGameRunning ? t('start') : t('stop')}</button>
         </>
     )
 }
 
-let useEffectTimeTextArmed = false; // funny name
+let useEffectTimeTextArmed = false;
 
 function Game() {
+    const { t, i18n } = useTranslation();
     ({isGameRunning, setIsGameRunning, settings, setSettings, gameValues, setGameValues, buttons, setButtons, question, setQuestion, statusText, setStatusText, 
         hardness, setHardness, useTextField, setUseTextField, timeElapsed, setTimeElapsed} = useStateContext());
     const cookie = new Cookies();
@@ -259,34 +271,28 @@ function Game() {
     timeText = tt;
     setTimeText = stt;
 
+    useEffect(() => {
+        if(gameValues.tries <= 0 ) {
+            setStatusText(t('gameover') + " "+t('lastscore')+": " + gameValues.score.toString() + " "+t('bestscore')+": " + hiScore.toString());
+        }
+    }, [isGameRunning])
+
     // high scores handler
     useEffect(() => {
         hiScore = cookie.get('hiScore');
-        hiTime = cookie.get('hiTime');
         let hiScoreText = "";
-        let hiTimeText = "";
 
         console.log(hiScore);
-        console.log(hiTime);
 
         if (hiScore == undefined) {
             hiScore = 0;
             cookie.set('hiScore', hiScore);
             console.log("undefined score");
         } else {
-            if(hiScore > 0) hiScoreText = "Best score: " + hiScore.toString();
-        }
-
-        if(hiTime == undefined) {
-            hiTime = 0;
-            cookie.set('hiTime', hiTime);
-            console.log("undefined time");
-        } else {
-            if(hiTime > 0) hiTimeText = "Best time: " + hiTime.toString();
+            if(hiScore > 0) hiScoreText = t('bestscore') + " : " + hiScore.toString();
         }
 
         setStatusText(hiScoreText);
-        setTimeText(hiTimeText);
     }, []);
 
     // update high score time once timer stopped
@@ -294,7 +300,7 @@ function Game() {
         if(isGameRunning) return;
         if(!useEffectTimeTextArmed) return;
         console.log("Updated timeText");
-        setTimeText("Last time: " + timeElapsed.toString() + " " + timeString);
+        setTimeText(t('lasttime') + ": " + timeElapsed.toString());
     },[timeElapsed, isGameRunning]);
 
     // hardness management
@@ -355,7 +361,6 @@ function Game() {
         if (isGameRunning) {
             timerRef.current = setInterval(() => {
                 setTimeElapsed(prev => {
-                    setTimeText("Time: " + (prev + 1).toString());
                     return prev + 1;
                 });
             }, 1000);
@@ -369,12 +374,13 @@ function Game() {
 
     const updateSetting = (key) => setSettings(prev => ({...prev, [key]: !prev[key]}));
     return <>
-    <h3>{timeText}</h3>
+    {!isGameRunning && <h3>{timeText}</h3>}
+    {isGameRunning && <h3>{t('time') + ": " + timeElapsed.toString()}</h3>}
     <h3 id="status">{statusText}</h3>
-    {!isGameRunning && <AvgTimePerQuestion />}
-    {!isGameRunning && <h2>Select parameters and press "Start"</h2>}
+    {!isGameRunning && <AvgTimePerQuestion score={gameValues["score"]} />}
+    {!isGameRunning && <h2>{t('entry_text')}</h2>}
     {isGameRunning && <div>
-        <h2 id="score">Score: {gameValues.score}</h2>
+        <h2 id="score">{t('score')}: {gameValues.score}</h2>
         <h2 id="question">{question}</h2>
         {!useTextField ? <div id="selection">
         <button onClick={() => HandleGameButton(0)}>{buttons[0]}</button>
@@ -388,18 +394,29 @@ function Game() {
             <br/>
             <button onClick={TextFieldSubmit}>Submit</button>
             </div>}
-        <p>Tries left: {gameValues.tries}</p>
-        <p>Hardness: {hardness}</p>
+        <p>{t('tries_left')}: {gameValues.tries}</p>
+        <p>{t('hardness')}: {hardness}</p>
         </div>}
     <StartButton />
     {!isGameRunning && <fieldset id="gameSettings">
         <legend>Settings</legend>
-        <label><input type="checkbox" checked={settings.arith} onChange={() => updateSetting("arith")}/> Arithmetics</label> <br/>
-        <label><input disabled={sqrt} type="checkbox" checked={settings.roots} onChange={() => updateSetting("roots")}/> Square roots {hardness < 2 && "(Level 2+)"}</label> <br/>
-        <label><input disabled={trig} type="checkbox" checked={settings.trig} onChange={() => updateSetting("trig")}/> Trigonometry {hardness < 4 && "(Level 4+)"}</label> <br/>
-        <label>Hardness <input type="range" value={hardness} onChange={e => setHardness(Number(e.target.value))} min={1} max={5} step={1}/> {hardness}</label><br/>
-        {hardness >= 4 && <><label><input disabled={textFieldFlag} type="checkbox" checked={useTextField} onChange={(e) => setUseTextField(e.target.checked)}/> Use text field {hardness < 4 && "(Level 4+)"}</label><br/></>}
-        <label><input type="checkbox" checked={adaptiveDifficulty} onChange={(e) => setAdaptiveDifficulty(e.target.checked)}/> Adaptive difficulty </label> <br/>
+        <div className='langSelector'>
+            <button onClick={() => {
+                console.log("english");
+                i18n.changeLanguage("en");
+            }}>EN</button>
+            <button onClick={() => {
+                console.log("ukrainian")
+                i18n.changeLanguage("ua");
+            }}>UA</button>
+        </div>
+        <br/>
+        <label><input type="checkbox" checked={settings.arith} onChange={() => updateSetting("arith")}/> {t('arithmetics')}</label> <br/>
+        <label><input disabled={sqrt} type="checkbox" checked={settings.roots} onChange={() => updateSetting("roots")}/> {t('squareroots')} {hardness < 2 && "(Level 2+)"}</label> <br/>
+        <label><input disabled={trig} type="checkbox" checked={settings.trig} onChange={() => updateSetting("trig")}/> {t('trigonometry')} {hardness < 4 && "(Level 4+)"}</label> <br/>
+        <label>{t('hardness')} <input type="range" value={hardness} onChange={e => setHardness(Number(e.target.value))} min={1} max={5} step={1}/> {hardness}</label><br/>
+        {hardness >= 4 && <><label><input disabled={textFieldFlag} type="checkbox" checked={useTextField} onChange={(e) => setUseTextField(e.target.checked)}/> {t('use_text_field')} {hardness < 4 && "(Level 4+)"}</label><br/></>}
+        <label><input type="checkbox" checked={adaptiveDifficulty} onChange={(e) => setAdaptiveDifficulty(e.target.checked)}/>{t('adaptive_difficulty')} </label> <br/>
     </fieldset>}
     </>
 }
