@@ -4,6 +4,7 @@ import {useStateContext} from './StateContext.jsx'
 import { Parser } from 'expr-eval';
 import { useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import Leaderboard from './Leaderboard.jsx';
 
 function getRandomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -128,6 +129,17 @@ function ParseAnswer() {
 }
 
 function HandleGameButton(btn) {
+    const insertHighscore = async (name, score) => {
+        try {
+            const res = await fetch(`/.netlify/functions/submitScore?name=${encodeURIComponent(name)}&score=${score}`);
+            const data = await res.json();
+            return data;
+        } catch (err) {
+            console.error("Failed to insert highscore:", err);
+            return null;
+        }
+    };
+
     const correct = useTextField ? ParseAnswer() === result : btn === correctButton;
     if(correct) {
         setGameValues(prev => {
@@ -151,6 +163,16 @@ function HandleGameButton(btn) {
                     hiScore = lastScore;
                     const cookie = new Cookies();
                     cookie.set('hiScore',hiScore);
+                    var name = cookie.get("name");
+                    console.log("name")
+                    if(name === undefined) {
+                        name = prompt("You got high score! Enter your name to appear on the leaderboard.");
+                        cookie.set("name",name);
+                    }
+                    if(name !== undefined && name !== null && name !== "") {
+                        console.log("writing to the leaderboard");
+                        insertHighscore(name,hiScore);
+                    }
                 }
                 return {
                     tries: gameValues.tries,
@@ -214,6 +236,16 @@ var timeString;
 
 // Components
 function StartButton() {
+    const insertHighscore = async (name, score) => {
+        try {
+            const res = await fetch(`/.netlify/functions/submitScore?name=${encodeURIComponent(name)}&score=${score}`);
+            const data = await res.json();
+            return data;
+        } catch (err) {
+            console.error("Failed to insert highscore:", err);
+            return null;
+        }
+    };
     const { t, i18n } = useTranslation();
     function gameStart() {
         const state = !isGameRunning; // here we save state of condition separately to compensate react setState delay
@@ -238,6 +270,16 @@ function StartButton() {
                 hiScore = lastScore;
                 const cookie = new Cookies();
                 cookie.set('hiScore',hiScore);
+                var name = cookie.get("name");
+                console.log("name")
+                if(name === undefined) {
+                    name = prompt("You got high score! Enter your name to appear on the leaderboard.");
+                    cookie.set("name",name);
+                }
+                if(name !== undefined && name !== null && name !== "") {
+                    console.log("writing to the leaderboard");
+                    insertHighscore(name,hiScore);
+                }
             }
             setStatusText(t('lastscore') + ": " + lastScore.toString() + " | "+t('bestscore')+": " + hiScore.toString());
         }
@@ -264,6 +306,7 @@ function Game() {
     const [f, sf] = useState("");
     const [tq,stq] = useState(false);
     const [tt, stt] = useState("");
+    const [leaderboard, setLeaderboard] = useState(false);
     fieldText = f;
     setFieldText = sf;
     trigQuesion = tq;
@@ -372,53 +415,69 @@ function Game() {
         return () => clearInterval(timerRef.current);
     }, [isGameRunning]);
 
-    const updateSetting = (key) => setSettings(prev => ({...prev, [key]: !prev[key]}));
-    return <>
-    {!isGameRunning && <h3>{timeText}</h3>}
-    {isGameRunning && <h3>{t('time') + ": " + timeElapsed.toString()}</h3>}
-    <h3 id="status">{statusText}</h3>
-    {!isGameRunning && <AvgTimePerQuestion score={gameValues["score"]} />}
-    {!isGameRunning && <h2>{t('entry_text')}</h2>}
-    {isGameRunning && <div>
-        <h2 id="score">{t('score')}: {gameValues.score}</h2>
-        <h2 id="question">{question}</h2>
-        {!useTextField ? <div id="selection">
-        <button onClick={() => HandleGameButton(0)}>{buttons[0]}</button>
-        <button onClick={() => HandleGameButton(1)}>{buttons[1]}</button>
-        <button onClick={() => HandleGameButton(2)}>{buttons[2]}</button>
-        </div> : <div>
-            <div id="selection">
-            <input id="field" type="text" value={fieldText} onChange={(e) => setFieldText(e.target.value)} onKeyDown={TextFieldSubmit} />
-            {trigQuesion && <button onClick={() => {setFieldText(fieldText + "√")}}>√</button>}
-            </div>
-            <br/>
-            <button onClick={TextFieldSubmit}>Submit</button>
-            </div>}
-        <p>{t('tries_left')}: {gameValues.tries}</p>
-        <p>{t('hardness')}: {hardness}</p>
-        </div>}
-    <StartButton />
-    {!isGameRunning && <fieldset id="gameSettings">
-        <legend>Settings</legend>
-        <div className='langSelector'>
-            <button onClick={() => {
-                console.log("english");
-                i18n.changeLanguage("en");
-            }}>EN</button>
-            <button onClick={() => {
-                console.log("ukrainian")
-                i18n.changeLanguage("ua");
-            }}>UA</button>
-        </div>
+    if(leaderboard) {
+        return <>
+        <button onClick={() => {
+                setLeaderboard(!leaderboard);
+            }}>Return</button>
         <br/>
-        <label><input type="checkbox" checked={settings.arith} onChange={() => updateSetting("arith")}/> {t('arithmetics')}</label> <br/>
-        <label><input disabled={sqrt} type="checkbox" checked={settings.roots} onChange={() => updateSetting("roots")}/> {t('squareroots')} {hardness < 2 && "(Level 2+)"}</label> <br/>
-        <label><input disabled={trig} type="checkbox" checked={settings.trig} onChange={() => updateSetting("trig")}/> {t('trigonometry')} {hardness < 4 && "(Level 4+)"}</label> <br/>
-        <label>{t('hardness')} <input type="range" value={hardness} onChange={e => setHardness(Number(e.target.value))} min={1} max={5} step={1}/> {hardness}</label><br/>
-        {hardness >= 4 && <><label><input disabled={textFieldFlag} type="checkbox" checked={useTextField} onChange={(e) => setUseTextField(e.target.checked)}/> {t('use_text_field')} {hardness < 4 && "(Level 4+)"}</label><br/></>}
-        <label><input type="checkbox" checked={adaptiveDifficulty} onChange={(e) => setAdaptiveDifficulty(e.target.checked)}/>{t('adaptive_difficulty')} </label> <br/>
-    </fieldset>}
-    </>
+        <br/>
+        <Leaderboard />
+        </>
+    } else {
+        const updateSetting = (key) => setSettings(prev => ({...prev, [key]: !prev[key]}));
+        return <>
+            {!isGameRunning && <h3>{timeText}</h3>}
+            {isGameRunning && <h3>{t('time') + ": " + timeElapsed.toString()}</h3>}
+            <h3 id="status">{statusText}</h3>
+            {!isGameRunning && <AvgTimePerQuestion score={gameValues["score"]} />}
+            {!isGameRunning && <h2>{t('entry_text')}</h2>}
+            {isGameRunning && <div>
+                <h2 id="score">{t('score')}: {gameValues.score}</h2>
+                <h2 id="question">{question}</h2>
+                {!useTextField ? <div id="selection">
+                <button onClick={() => HandleGameButton(0)}>{buttons[0]}</button>
+                <button onClick={() => HandleGameButton(1)}>{buttons[1]}</button>
+                <button onClick={() => HandleGameButton(2)}>{buttons[2]}</button>
+                </div> : <div>
+                    <div id="selection">
+                    <input id="field" type="text" value={fieldText} onChange={(e) => setFieldText(e.target.value)} onKeyDown={TextFieldSubmit} />
+                    {trigQuesion && <button onClick={() => {setFieldText(fieldText + "√")}}>√</button>}
+                    </div>
+                    <br/>
+                    <button onClick={TextFieldSubmit}>Submit</button>
+                    </div>}
+                <p>{t('tries_left')}: {gameValues.tries}</p>
+                <p>{t('hardness')}: {hardness}</p>
+                </div>}
+            <StartButton />
+            {!isGameRunning && <fieldset id="gameSettings">
+                <legend>Settings</legend>
+                <a href="https://forms.gle/YZfdXVYR6ZxWx7Dj8">{t('reportaproblem')}</a>
+                <br/><br/>
+                <div className='langSelector'>
+                    <button onClick={() => {
+                        console.log("english");
+                        i18n.changeLanguage("en");
+                    }}>EN</button>
+                    <button onClick={() => {
+                        console.log("ukrainian")
+                        i18n.changeLanguage("ua");
+                    }}>UA</button>
+                </div>
+                <br/>
+                <label><input type="checkbox" checked={settings.arith} onChange={() => updateSetting("arith")}/> {t('arithmetics')}</label> <br/>
+                <label><input disabled={sqrt} type="checkbox" checked={settings.roots} onChange={() => updateSetting("roots")}/> {t('squareroots')} {hardness < 2 && "(Level 2+)"}</label> <br/>
+                <label><input disabled={trig} type="checkbox" checked={settings.trig} onChange={() => updateSetting("trig")}/> {t('trigonometry')} {hardness < 4 && "(Level 4+)"}</label> <br/>
+                <label>{t('hardness')} <input type="range" value={hardness} onChange={e => setHardness(Number(e.target.value))} min={1} max={5} step={1}/> {hardness}</label><br/>
+                {hardness >= 4 && <><label><input disabled={textFieldFlag} type="checkbox" checked={useTextField} onChange={(e) => setUseTextField(e.target.checked)}/> {t('use_text_field')} {hardness < 4 && "(Level 4+)"}</label><br/></>}
+                <label><input type="checkbox" checked={adaptiveDifficulty} onChange={(e) => setAdaptiveDifficulty(e.target.checked)}/>{t('adaptive_difficulty')} </label> <br/>
+            </fieldset>}
+            {!isGameRunning && <><br/><br/><button onClick={() => {
+                setLeaderboard(!leaderboard);
+            }}>{t('leaderboard')}</button></>}
+        </>
+    }
 }
 
 export default Game;

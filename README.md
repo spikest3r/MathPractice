@@ -1,9 +1,12 @@
-# Math Practice v1.2
+# Math Practice v1.3
 ## Web app made with React
 
 This game is very useful when you want to practice counting simple and complex equations without using any tools but your head 😀
 
-September 9 2025: Now has UA localization
+English & Ukrainian localization available.
+
+Leaderboard implemented.
+
 
 ### There are 3 different topics you can select:
 * **Arithmetics**

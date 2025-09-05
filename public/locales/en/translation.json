@@ -20,5 +20,12 @@
     "level4+" : "(Level 4+)",
     "use_text_field" : "Use text field",
     "adaptive_difficulty" : "Adaptive difficulty",
-    "gameover" : "Game over!"
+    "gameover" : "Game over!",
+    "reportaproblem" : "Report a problem",
+    "reportoffensivename" : "Report an offensive name",
+    "leaderboard" : "Leaderboard",
+    "return" : "Return",
+    "changemyname" : "Change my name",
+    "rank" : "Rank",
+    "name" : "Name"
 }

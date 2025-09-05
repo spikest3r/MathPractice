@@ -20,5 +20,12 @@
     "level4+" : "(Рівень 4+)",
     "use_text_field" : "Текстове поле",
     "adaptive_difficulty" : "Адаптивна важкість",
-    "gameover" : "Гру завершено!"
+    "gameover" : "Гру завершено!",
+    "reportaproblem" : "Повідомити про проблему",
+    "reportoffensivename" : "Повідомити про образливе ім'я",
+    "leaderboard" : "Таблиця лідерів",
+    "return" : "Вернутися",
+    "changemyname" : "Змінити своє ім'я",
+    "rank" : "Ранг",
+    "name" : "Ім'я"
 }
