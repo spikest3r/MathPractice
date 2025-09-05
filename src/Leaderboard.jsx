@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import './Leaderboard.css'
 
 function Leaderboard() {
   const [leaderboardData, setLeaderboardData] = useState([]);
